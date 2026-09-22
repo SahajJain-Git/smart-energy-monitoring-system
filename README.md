@@ -1,7 +1,7 @@
 # Smart Energy Monitoring System
 
 > **Device Identifier:** `SEM-ESP32-001`  
-> **Status:** Phase 1 — Architecture & Setup Complete  
+> **Status:** Phase 2 — Database Design & Migrations Complete  
 > **Target Environment:** IoT Energy Prototype (Research & Learning)
 
 ---
@@ -166,9 +166,9 @@ smart-energy-monitoring-system/
 
 ## 9. Development Roadmap
 
-- **Phase 1:** Architecture & Setup *(Current Phase)*
-- **Phase 2:** Database Design & MySQL Migrations
-- **Phase 3:** Spring Boot Backend Implementation
+- **Phase 1:** Architecture & Setup *(Completed)*
+- **Phase 2:** Database Design & MySQL Migrations *(Completed)*
+- **Phase 3:** Spring Boot Backend Implementation *(Upcoming)*
 - **Phase 4:** Frontend Dashboard Development (REST Polling)
 - **Phase 5:** ESP32 Firmware Development & Calibration
 - **Phase 6:** End-to-End System Integration
