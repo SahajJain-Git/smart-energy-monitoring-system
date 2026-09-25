@@ -79,6 +79,9 @@ yarn-error.log*
 secrets.properties
 application-local.properties
 application-secret.properties
+secrets.h
+**/secrets.h
+!**/secrets.example.h
 *.key
 *.pem
 *.pfx
