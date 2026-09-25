@@ -1,0 +1,145 @@
+{
+  "info": {
+    "_postman_id": "a98e543b-4179-4d82-8bc1-872fba172901",
+    "name": "Smart Energy Monitoring System",
+    "description": "REST API Collection for Smart Energy Monitoring System (Device ID: SEM-ESP32-001).\nAll units use apparent energy terminology (V, A, VA, VAh, kVAh).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Ingest Telemetry (POST /api/v1/measurements)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deviceId\": \"SEM-ESP32-001\",\n  \"voltageRms\": 231.20,\n  \"currentRms\": 5.450,\n  \"samplingDurationSeconds\": 1.00\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/v1/measurements",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "v1", "measurements"]
+        },
+        "description": "Simulates an ESP32 edge device transmitting instantaneous electrical telemetry. Apparent power and incremental energy are automatically computed."
+      }
+    },
+    {
+      "name": "2. Get Latest Telemetry (GET /api/v1/measurements/latest)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/v1/measurements/latest?deviceId=SEM-ESP32-001",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "v1", "measurements", "latest"],
+          "query": [
+            {
+              "key": "deviceId",
+              "value": "SEM-ESP32-001"
+            }
+          ]
+        },
+        "description": "Retrieves the single most recent instantaneous electrical telemetry sample for the specified hardware device."
+      }
+    },
+    {
+      "name": "3. Get Telemetry History (GET /api/v1/measurements/history)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/v1/measurements/history?deviceId=SEM-ESP32-001",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "v1", "measurements", "history"],
+          "query": [
+            {
+              "key": "deviceId",
+              "value": "SEM-ESP32-001"
+            }
+          ]
+        },
+        "description": "Retrieves historical time-series telemetry for charting and graph rendering. Defaults to the last 24 hours."
+      }
+    },
+    {
+      "name": "4. List All Registered Devices (GET /api/v1/devices)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/v1/devices",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "v1", "devices"]
+        },
+        "description": "Returns the registry catalog of all IoT hardware monitoring devices."
+      }
+    },
+    {
+      "name": "5. Get Device By ID (GET /api/v1/devices/{deviceId})",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/v1/devices/SEM-ESP32-001",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "v1", "devices", "SEM-ESP32-001"]
+        },
+        "description": "Fetches metadata, location, and operational status for a single device."
+      }
+    },
+    {
+      "name": "6. Validation Error Test (Negative Values)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deviceId\": \"\",\n  \"voltageRms\": -50.00,\n  \"currentRms\": -2.50\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/v1/measurements",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "v1", "measurements"]
+        },
+        "description": "Verifies that invalid/negative electrical parameters are rejected with HTTP 400 Bad Request and detailed field errors."
+      }
+    },
+    {
+      "name": "7. Device Not Found Test (404 Error)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/v1/devices/UNKNOWN-DEVICE-999",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "v1", "devices", "UNKNOWN-DEVICE-999"]
+        },
+        "description": "Verifies that GlobalExceptionHandler returns a structured JSON 404 response for unknown devices."
+      }
+    }
+  ]
+}
