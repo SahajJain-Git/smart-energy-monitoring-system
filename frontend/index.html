@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Energy Monitoring System — Dashboard (SEM-ESP32-001)</title>
+  <!-- Step 4 CSS stylesheet link -->
+  <link rel="stylesheet" href="css/styles.css">
+  <!-- Chart.js CDN for Step 10 historical telemetry charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- ====================================================================
+       1. APPLICATION HEADER
+       ==================================================================== -->
+  <header class="app-header">
+    <div class="header-brand">
+      <h1>Smart Energy Monitoring System</h1>
+      <p class="header-subtitle">Real-Time Apparent Power (VA) &amp; Apparent Energy (kVAh) Telemetry</p>
+    </div>
+    <div class="header-controls">
+      <span id="connection-badge" class="status-badge status-loading">Connecting to API...</span>
+      <button id="refresh-btn" class="btn-refresh" type="button">Refresh Now</button>
+    </div>
+  </header>
+
+  <!-- System Notification / Error / Loading Banner (used in Step 12) -->
+  <div id="status-banner" class="status-banner" role="status" aria-live="polite">
+    Waiting for initial telemetry from Spring Boot API (http://localhost:8080)...
+  </div>
+
+  <main class="dashboard-container">
+
+    <!-- ====================================================================
+         2. DEVICE INFORMATION SECTION (SEM-ESP32-001)
+         ==================================================================== -->
+    <section class="panel device-panel" aria-labelledby="device-section-title">
+      <div class="panel-header">
+        <h2 id="device-section-title">Hardware Node Information</h2>
+        <span class="device-id-tag">Target Node: <strong id="device-id">SEM-ESP32-001</strong></span>
+      </div>
+
+      <div class="device-info-grid">
+        <div class="info-item">
+          <span class="info-label">Device Name</span>
+          <span id="device-name" class="info-value">--</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Installation Location</span>
+          <span id="device-location" class="info-value">--</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Node Status</span>
+          <span id="device-status" class="info-value">--</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Last Measurement Recorded</span>
+          <span id="last-recorded-at" class="info-value">--</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         3. LIVE INSTANTANEOUS MEASUREMENT CARDS (V, A, VA)
+         ==================================================================== -->
+    <section class="panel" aria-labelledby="live-metrics-title">
+      <div class="panel-header">
+        <h2 id="live-metrics-title">Live Electrical Measurements</h2>
+        <span id="sampling-window-label" class="panel-meta">Sampling Window: -- s</span>
+      </div>
+
+      <div class="cards-grid">
+        <!-- Voltage RMS Card -->
+        <article class="metric-card card-voltage">
+          <h3 class="card-title">Voltage RMS</h3>
+          <div class="card-reading">
+            <span id="voltage-rms" class="reading-number">--</span>
+            <span class="reading-unit">V</span>
+          </div>
+          <p class="card-caption">Sensor: ZMPT101B (GPIO35 / ADC1_CH7)</p>
+        </article>
+
+        <!-- Current RMS Card -->
+        <article class="metric-card card-current">
+          <h3 class="card-title">Current RMS</h3>
+          <div class="card-reading">
+            <span id="current-rms" class="reading-number">--</span>
+            <span class="reading-unit">A</span>
+          </div>
+          <p class="card-caption">Sensor: ACS712-5A (GPIO34 / ADC1_CH6)</p>
+        </article>
+
+        <!-- Apparent Power Card -->
+        <article class="metric-card card-power">
+          <h3 class="card-title">Apparent Power</h3>
+          <div class="card-reading">
+            <span id="apparent-power" class="reading-number">--</span>
+            <span class="reading-unit">VA</span>
+          </div>
+          <p class="card-caption">Computed: S = V<sub>rms</sub> &times; I<sub>rms</sub> (Volt-Amperes)</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         4. APPARENT ENERGY (VAh / kVAh) & ESTIMATED COST (INR) SECTION
+         ==================================================================== -->
+    <section class="panel" aria-labelledby="energy-cost-title">
+      <div class="panel-header">
+        <h2 id="energy-cost-title">Apparent Energy &amp; Estimated Cost Summary (Last 24h)</h2>
+        <span id="history-count-label" class="panel-meta">Records Analyzed: 0</span>
+      </div>
+
+      <div class="cards-grid">
+        <!-- Latest Incremental Apparent Energy -->
+        <article class="metric-card card-energy-inc">
+          <h3 class="card-title">Latest Window Apparent Energy</h3>
+          <div class="card-reading">
+            <span id="incremental-energy-vah" class="reading-number">--</span>
+            <span class="reading-unit">VAh</span>
+          </div>
+          <p class="card-caption">&Delta;E = S &times; (&Delta;t / 3600) in Volt-Ampere-Hours</p>
+        </article>
+
+        <!-- Aggregated Apparent Energy (kVAh) -->
+        <article class="metric-card card-energy-total">
+          <h3 class="card-title">Aggregated Apparent Energy</h3>
+          <div class="card-reading">
+            <span id="aggregated-energy-kvah" class="reading-number">--</span>
+            <span class="reading-unit">kVAh</span>
+          </div>
+          <p class="card-caption">Cumulative Apparent Energy (&Sigma;VAh / 1000)</p>
+        </article>
+
+        <!-- Estimated Cost (INR) -->
+        <article class="metric-card card-cost">
+          <h3 class="card-title">Estimated Apparent Energy Cost</h3>
+          <div class="card-reading">
+            <span class="reading-currency">INR</span>
+            <span id="estimated-cost-inr" class="reading-number">--</span>
+          </div>
+          <p class="card-caption">Estimated at Tariff: INR <span id="tariff-rate-display">8.00</span> / kVAh</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         5. HISTORICAL TELEMETRY CHARTS (Chart.js Canvas Containers)
+         ==================================================================== -->
+    <section class="panel" aria-labelledby="charts-section-title">
+      <div class="panel-header">
+        <h2 id="charts-section-title">Historical Telemetry Trends</h2>
+        <span class="panel-meta">Chronological Measurements from MySQL</span>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-box">
+          <h3 class="chart-title">Voltage RMS (V) Over Time</h3>
+          <div class="canvas-wrapper">
+            <canvas id="voltageChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-box">
+          <h3 class="chart-title">Current RMS (A) Over Time</h3>
+          <div class="canvas-wrapper">
+            <canvas id="currentChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-box chart-box-wide">
+          <h3 class="chart-title">Apparent Power (VA) Over Time</h3>
+          <div class="canvas-wrapper">
+            <canvas id="apparentPowerChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="app-footer">
+    <p>
+      Smart Energy Monitoring System &bull; Node: <strong>SEM-ESP32-001</strong> &bull;
+      Note: Measurements represent <em>Apparent Power (VA)</em> and <em>Apparent Energy (VAh / kVAh)</em> without phase-angle power factor correction.
+    </p>
+  </footer>
+
+  <!-- Step 6 & Step 7+ JavaScript modules -->
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
