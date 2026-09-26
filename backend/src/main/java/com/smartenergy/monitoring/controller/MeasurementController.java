@@ -59,13 +59,14 @@ public class MeasurementController {
      * Used for time-series charts, energy consumption profiles, and telemetry analytics.
      *
      * Defaults to the last 24 hours if timestamps are omitted.
+     * Accessible via both GET /api/v1/measurements and GET /api/v1/measurements/history
      *
      * @param deviceId  hardware identifier string (default: SEM-ESP32-001)
      * @param startTime beginning of interval (ISO 8601 format: 2026-09-25T00:00:00)
      * @param endTime   end of interval (ISO 8601 format: 2026-09-25T23:59:59)
      * @return list of chronological measurements
      */
-    @GetMapping("/history")
+    @GetMapping({"", "/history"})
     public ResponseEntity<List<MeasurementResponse>> getHistoricalMeasurements(
             @RequestParam(name = "deviceId", defaultValue = "SEM-ESP32-001") String deviceId,
             @RequestParam(name = "startTime", required = false)
