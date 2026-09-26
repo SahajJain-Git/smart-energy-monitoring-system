@@ -1,0 +1,9 @@
+{
+  "name": "smart-energy-monitoring-frontend",
+  "version": "1.0.0",
+  "description": "Smart Energy Monitoring System - Frontend Dashboard and Automated Tests",
+  "private": true,
+  "scripts": {
+    "test": "node --test test/**/*.test.js"
+  }
+}

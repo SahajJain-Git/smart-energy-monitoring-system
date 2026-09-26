@@ -15,4 +15,7 @@
 #define BACKEND_PORT     8080
 #define BACKEND_API_PATH "/api/v1/measurements"
 
+// Device-specific API key for SEM-ESP32-001 hardware telemetry authentication
+#define DEVICE_API_KEY   "YOUR_DEVICE_API_KEY"
+
 #endif // SECRETS_H

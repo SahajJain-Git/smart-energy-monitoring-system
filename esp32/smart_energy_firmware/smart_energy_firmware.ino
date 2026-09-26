@@ -109,6 +109,8 @@ int sendSingleHttpPost(const char* jsonPayload, int contentLen, String& response
   client.print(":");
   client.println(BACKEND_PORT);
   client.println("Content-Type: application/json");
+  client.print("X-API-Key: ");
+  client.println(DEVICE_API_KEY);
   client.print("Content-Length: ");
   client.println(contentLen);
   client.println("Connection: close");
@@ -184,6 +186,15 @@ bool postBatchWithRetry(float avgV, float avgI, float durationSec) {
       Serial.println(responseBody);
       consecutiveHttpFailures = 0;
       return true;
+    }
+
+    if (status == 401 || status == 403) {
+      Serial.print("  [Step 17 Auth Failure] HTTP ");
+      Serial.print(status);
+      Serial.println(" - Device API key rejected or unauthorized. Halting immediate retries.");
+      consecutiveHttpFailures++;
+      nextAllowedPostMs = millis() + (60000UL); // 60s cooldown before next retry cycle
+      return false;
     }
 
     unsigned long backoffMs = BASE_RETRY_DELAY_MS * (1UL << (attempt - 1));

@@ -12,8 +12,108 @@ const API_CONFIG = {
     REQUEST_TIMEOUT_MS: 8000
 };
 
+const AUTH_TOKEN_KEY = "smart_energy_jwt_token";
+let inMemoryToken = null; // In-memory fallback for environments without sessionStorage (e.g. Node.js test runner)
+
+/**
+ * Retrieve the current JWT token from sessionStorage or memory.
+ *
+ * @returns {string|null} JWT token string or null
+ */
+function getAuthToken() {
+    try {
+        if (typeof sessionStorage !== "undefined") {
+            const stored = sessionStorage.getItem(AUTH_TOKEN_KEY);
+            if (stored) return stored;
+        }
+    } catch (_) {}
+    return inMemoryToken;
+}
+
+/**
+ * Store the JWT token in sessionStorage and memory.
+ *
+ * @param {string|null} token - JWT token string or null to clear
+ */
+function setAuthToken(token) {
+    try {
+        if (typeof sessionStorage !== "undefined") {
+            if (token) {
+                sessionStorage.setItem(AUTH_TOKEN_KEY, token);
+            } else {
+                sessionStorage.removeItem(AUTH_TOKEN_KEY);
+            }
+        }
+    } catch (_) {}
+    inMemoryToken = token;
+}
+
+/**
+ * Remove stored JWT token from session storage and memory.
+ */
+function clearAuthToken() {
+    setAuthToken(null);
+}
+
+/**
+ * Check if a JWT token is currently available.
+ *
+ * @returns {boolean}
+ */
+function isAuthenticated() {
+    return !!getAuthToken();
+}
+
+/**
+ * Authenticate with the backend using username and password to obtain a JWT token.
+ * Maps to: POST /api/v1/auth/login
+ *
+ * @param {string} username
+ * @param {string} password
+ * @returns {Promise<Object>} AuthResponse ({ username, role, token, message })
+ */
+async function login(username, password) {
+    const url = `${API_CONFIG.BASE_URL}/auth/login`;
+
+    const response = await fetch(url, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        },
+        body: JSON.stringify({ username, password })
+    });
+
+    if (!response.ok) {
+        let errorDetail = `HTTP ${response.status} (${response.statusText})`;
+        try {
+            const errorBody = await response.json();
+            if (errorBody && errorBody.message) {
+                errorDetail = errorBody.message;
+            }
+        } catch (_) {}
+        const error = new Error(errorDetail);
+        error.status = response.status;
+        throw error;
+    }
+
+    const data = await response.json();
+    if (data && data.token) {
+        setAuthToken(data.token);
+    }
+    return data;
+}
+
+/**
+ * Clear the authentication token from session storage and log out.
+ */
+function logout() {
+    clearAuthToken();
+}
+
 /**
  * Internal helper to perform a GET request with timeout and HTTP status validation.
+ * Automatically attaches Authorization: Bearer <JWT> if an authenticated token is present.
  *
  * @param {string} endpointPath - Relative path starting with '/' (e.g., '/devices/SEM-ESP32-001')
  * @returns {Promise<any>} Parsed JSON response body
@@ -23,16 +123,27 @@ async function apiGet(endpointPath) {
     const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.REQUEST_TIMEOUT_MS);
     const url = `${API_CONFIG.BASE_URL}${endpointPath}`;
 
+    const headers = {
+        "Accept": "application/json"
+    };
+
+    const token = getAuthToken();
+    if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+    }
+
     try {
         const response = await fetch(url, {
             method: "GET",
-            headers: {
-                "Accept": "application/json"
-            },
+            headers: headers,
             signal: controller.signal
         });
 
         if (!response.ok) {
+            if (response.status === 401) {
+                clearAuthToken(); // Clear expired or invalid token
+            }
+
             let errorDetail = `HTTP ${response.status} (${response.statusText})`;
             try {
                 const errorBody = await response.json();
@@ -151,12 +262,40 @@ function calculateEnergySummary(historyList, tariffRateInr = 8.00) {
     };
 }
 
-// Expose API functions globally for app.js
-window.SmartEnergyApi = {
-    API_CONFIG,
-    fetchAllDevices,
-    fetchDeviceInfo,
-    fetchLatestMeasurement,
-    fetchMeasurementHistory,
-    calculateEnergySummary
-};
+// Expose API functions globally for app.js (browser)
+if (typeof window !== "undefined") {
+    window.SmartEnergyApi = {
+        API_CONFIG,
+        getAuthToken,
+        setAuthToken,
+        clearAuthToken,
+        isAuthenticated,
+        login,
+        logout,
+        apiGet,
+        fetchAllDevices,
+        fetchDeviceInfo,
+        fetchLatestMeasurement,
+        fetchMeasurementHistory,
+        calculateEnergySummary
+    };
+}
+
+// CommonJS export for Node.js automated test runner
+if (typeof module !== "undefined" && module.exports) {
+    module.exports = {
+        API_CONFIG,
+        getAuthToken,
+        setAuthToken,
+        clearAuthToken,
+        isAuthenticated,
+        login,
+        logout,
+        apiGet,
+        fetchAllDevices,
+        fetchDeviceInfo,
+        fetchLatestMeasurement,
+        fetchMeasurementHistory,
+        calculateEnergySummary
+    };
+}

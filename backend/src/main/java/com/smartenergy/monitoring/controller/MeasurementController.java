@@ -18,7 +18,6 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/v1/measurements")
-@CrossOrigin(origins = "*")
 public class MeasurementController {
 
     private final MeasurementService measurementService;
@@ -29,13 +28,25 @@ public class MeasurementController {
 
     /**
      * Ingests a new instantaneous electrical telemetry measurement from an edge device.
-     * Validates electrical variables and persists them to the database.
+     * Validates device authentication binding, electrical variables, and persists them to the database.
      *
      * @param request validated telemetry payload
+     * @param authentication security authentication representing the identified edge device
      * @return HTTP 201 CREATED with the persisted MeasurementResponse
      */
     @PostMapping
-    public ResponseEntity<MeasurementResponse> recordMeasurement(@Valid @RequestBody MeasurementRequest request) {
+    public ResponseEntity<MeasurementResponse> recordMeasurement(
+            @Valid @RequestBody MeasurementRequest request,
+            org.springframework.security.core.Authentication authentication) {
+
+        if (authentication != null && authentication.getPrincipal() instanceof String authenticatedDeviceId) {
+            if (!authenticatedDeviceId.equals(request.getDeviceId())) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Device identity mismatch: authenticated device identity does not match request device ID."
+                );
+            }
+        }
+
         MeasurementResponse response = measurementService.recordMeasurement(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -79,6 +90,10 @@ public class MeasurementController {
         }
         if (startTime == null) {
             startTime = endTime.minusHours(24);
+        }
+
+        if (startTime.isAfter(endTime)) {
+            throw new IllegalArgumentException("Start time must be before or equal to end time.");
         }
 
         List<MeasurementResponse> responseList = measurementService.getHistoricalMeasurements(deviceId, startTime, endTime);

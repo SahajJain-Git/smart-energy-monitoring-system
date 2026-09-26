@@ -436,18 +436,33 @@ async function refreshDashboard() {
         }
         console.log(`[Dashboard] History analyzed & plotted: ${historyList ? historyList.length : 0} records.`);
     } catch (error) {
-        // 3. Error State Handling (Backend offline or network failure)
-        console.error("[Dashboard] Error refreshing telemetry:", error);
-        if (connectionBadgeEl) {
-            connectionBadgeEl.className = "status-badge status-error";
-            connectionBadgeEl.textContent = "API Offline";
-        }
-        if (statusBannerEl) {
-            statusBannerEl.className = "status-banner banner-error";
-            statusBannerEl.textContent = `Backend Unreachable (${error.message}). Please verify the Spring Boot service is running on port 8080 and MySQL is active.`;
-        }
-        if (refreshBtn) {
-            refreshBtn.textContent = "Retry Connection";
+        if (error.status === 401) {
+            console.warn("[Dashboard] Authentication required or token expired.");
+            if (connectionBadgeEl) {
+                connectionBadgeEl.className = "status-badge status-error";
+                connectionBadgeEl.textContent = "Auth Required";
+            }
+            if (statusBannerEl) {
+                statusBannerEl.className = "status-banner banner-warning";
+                statusBannerEl.textContent = "Authentication required or session expired. Please log in to view telemetry.";
+            }
+            if (refreshBtn) {
+                refreshBtn.textContent = "Log In Required";
+            }
+        } else {
+            // 3. Error State Handling (Backend offline or network failure)
+            console.error("[Dashboard] Error refreshing telemetry:", error);
+            if (connectionBadgeEl) {
+                connectionBadgeEl.className = "status-badge status-error";
+                connectionBadgeEl.textContent = "API Offline";
+            }
+            if (statusBannerEl) {
+                statusBannerEl.className = "status-banner banner-error";
+                statusBannerEl.textContent = `Backend Unreachable (${error.message}). Please verify the Spring Boot service is running on port 8080 and MySQL is active.`;
+            }
+            if (refreshBtn) {
+                refreshBtn.textContent = "Retry Connection";
+            }
         }
     } finally {
         if (refreshBtn) {
@@ -524,35 +539,62 @@ function handleManualRefresh() {
     executePollCycle();
 }
 
-// Initial boot on DOM ready
-document.addEventListener("DOMContentLoaded", () => {
-    // Attach manual refresh button listener
-    const refreshBtn = document.getElementById("refresh-btn") || document.getElementById("btn-refresh");
-    if (refreshBtn) {
-        refreshBtn.addEventListener("click", handleManualRefresh);
-    }
+// Initial boot on DOM ready (browser environment only)
+if (typeof document !== "undefined") {
+    document.addEventListener("DOMContentLoaded", () => {
+        // Attach manual refresh button listener
+        const refreshBtn = document.getElementById("refresh-btn") || document.getElementById("btn-refresh");
+        if (refreshBtn) {
+            refreshBtn.addEventListener("click", handleManualRefresh);
+        }
 
-    // Pause polling when browser tab is inactive to preserve client CPU and network bandwidth
-    if (typeof document.addEventListener === "function") {
-        document.addEventListener("visibilitychange", () => {
-            if (document.hidden) {
-                console.log("[Polling] Tab inactive: pausing polling.");
-                stopPolling();
-            } else {
-                console.log("[Polling] Tab active: resuming polling.");
-                startPolling();
-            }
-        });
-    }
+        // Pause polling when browser tab is inactive to preserve client CPU and network bandwidth
+        if (typeof document.addEventListener === "function") {
+            document.addEventListener("visibilitychange", () => {
+                if (document.hidden) {
+                    console.log("[Polling] Tab inactive: pausing polling.");
+                    stopPolling();
+                } else {
+                    console.log("[Polling] Tab active: resuming polling.");
+                    startPolling();
+                }
+            });
+        }
 
-    // Start initial polling cycle
-    startPolling();
-});
+        // Start initial polling cycle
+        startPolling();
+    });
+}
 
-// Expose dashboard controller for manual debugging and tests
-window.SmartEnergyDashboard = {
-    refreshDashboard,
-    startPolling,
-    stopPolling,
-    isPollingActive: () => isPollingActive
-};
+// Expose dashboard controller globally for manual debugging and browser use
+if (typeof window !== "undefined") {
+    window.SmartEnergyDashboard = {
+        refreshDashboard,
+        startPolling,
+        stopPolling,
+        isPollingActive: () => isPollingActive
+    };
+}
+
+// CommonJS export for Node.js automated test runner
+if (typeof module !== "undefined" && module.exports) {
+    module.exports = {
+        formatTimestamp,
+        formatChartTime,
+        updateDeviceInfo,
+        updateLiveMeasurements,
+        updateEnergyAndCost,
+        updateCharts,
+        renderLineChart,
+        refreshDashboard,
+        executePollCycle,
+        startPolling,
+        stopPolling,
+        handleManualRefresh,
+        POLLING_CONFIG,
+        isPollingActive: () => isPollingActive,
+        isFetchInProgress: () => isFetchInProgress,
+        setFetchInProgress: (val) => { isFetchInProgress = val; },
+        chartInstances
+    };
+}
